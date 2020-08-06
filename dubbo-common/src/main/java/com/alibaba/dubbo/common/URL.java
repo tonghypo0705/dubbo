@@ -64,6 +64,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li>home/user1/router.js?type=script <br>
  * for this case, url protocol = null, url host = home, url path = user1/router.js
  * </ul>
+ *所有额痞子最终
  *
  * @see java.net.URL
  * @see java.net.URI
@@ -71,21 +72,21 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class URL implements Serializable {
 
     private static final long serialVersionUID = -1985165475234910535L;
-
+    //协议名称
     private final String protocol;
-
+    //用户名
     private final String username;
-
+    //密码
     private final String password;
-
+    //地址
     // by default, host to registry
     private final String host;
-
+    //端口
     // by default, port to registry
     private final int port;
-
+    //路径 服务名
     private final String path;
-
+    //参数集合
     private final Map<String, String> parameters;
 
     // ==== cache ====

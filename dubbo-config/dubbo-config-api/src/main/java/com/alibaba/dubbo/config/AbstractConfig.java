@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 
 /**
  * Utility methods and public methods for parsing configuration
- *
+ * 主要提供配置解析与校验相关的工具方法
  * @export
  */
 public abstract class AbstractConfig implements Serializable {
@@ -75,7 +75,7 @@ public abstract class AbstractConfig implements Serializable {
         // this is only for compatibility
         Runtime.getRuntime().addShutdownHook(DubboShutdownHook.getDubboShutdownHook());
     }
-
+    //配置对象编号，适用除了api之外的三种配置，属性配置，api配置，xml配置，注解配置
     protected String id;
 
     private static String convertLegacyValue(String key, String value) {
@@ -172,6 +172,12 @@ public abstract class AbstractConfig implements Serializable {
         appendParameters(parameters, config, null);
     }
 
+    /**
+     * 将配置对象的属性，添加到参数集合
+     * @param parameters
+     * @param config
+     * @param prefix
+     */
     @SuppressWarnings("unchecked")
     protected static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
         if (config == null) {

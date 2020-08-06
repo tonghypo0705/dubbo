@@ -126,14 +126,24 @@
     </properties>
 
     <modules>
+        <!--公共逻辑模块：提供工具类和通用模型-->
         <module>dubbo-common</module>
         <module>dubbo-container</module>
+        <!--远程通信模块：提供通用的客户端和服务端的通讯录功能-->
         <module>dubbo-remoting</module>
+        <!--远程调用模块：抽象各种协议，以及动态代理，只包含一对一的调用-->
         <module>dubbo-rpc</module>
         <module>dubbo-filter</module>
+        <!--集群模块，将多个服务提供方伪装成一个提供方，-->
         <module>dubbo-cluster</module>
+        <!--注册中心模块-->
         <module>dubbo-registry</module>
+        <!--监控模块-->
         <module>dubbo-monitor</module>
+        <!--配置模块：是Dubbo对外的API,用户通过config使用dubbo,隐藏dubbo的所有细节
+        dubbo-config-api:实现了API配置和属性配置功能
+        bubbo-config-spring:实现了XML配置和注解配置功能
+        -->
         <module>dubbo-config</module>
         <module>dubbo-demo</module>
         <module>dubbo-plugin</module>
