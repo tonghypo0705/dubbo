@@ -64,7 +64,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li>home/user1/router.js?type=script <br>
  * for this case, url protocol = null, url host = home, url path = user1/router.js
  * </ul>
- *所有额痞子最终
+ * 所有配置最终都会将转换为Dubbo Url表示，并由服务提供方生成，经注册中心传递给消费方，各属性对应Url参数，参见配置项一览表中的对应URL参数
  *
  * @see java.net.URL
  * @see java.net.URI
@@ -86,7 +86,7 @@ public final class URL implements Serializable {
     private final int port;
     //路径 服务名
     private final String path;
-    //参数集合
+    //参数集合，实际上就是Service对应的配置项，通过AbstractConfig#appendParameters(parameters,config,prefix)
     private final Map<String, String> parameters;
 
     // ==== cache ====

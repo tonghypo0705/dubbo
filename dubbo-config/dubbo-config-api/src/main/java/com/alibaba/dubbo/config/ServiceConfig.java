@@ -64,7 +64,7 @@ import static com.alibaba.dubbo.common.utils.NetUtils.isInvalidPort;
 
 /**
  * ServiceConfig
- *
+ * 服务提供者暴露服务配置类
  * @export
  */
 public class ServiceConfig<T> extends AbstractServiceConfig {
@@ -193,8 +193,15 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         return unexported;
     }
 
+    /**
+     * 1.进一步初始化ServiceConfig对象
+     * 2.校验ServiceConfig对象的配置项
+     * 3.使用ServiceConfig对象，生成Dubbo Url对象数组
+     * 4.使用Dubbo URL对象，暴露服务
+     */
     public synchronized void export() {
         if (provider != null) {
+            //当 export 或者delay未配置，从ProviderConfig对象读取
             if (export == null) {
                 export = provider.getExport();
             }
@@ -202,10 +209,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 delay = provider.getDelay();
             }
         }
+        //不暴露服务直接返回
         if (export != null && !export) {
             return;
         }
-
+        //延迟暴露
         if (delay != null && delay > 0) {
             delayExportExecutor.schedule(new Runnable() {
                 @Override
@@ -214,6 +222,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 }
             }, delay, TimeUnit.MILLISECONDS);
         } else {
+            //立即暴露
             doExport();
         }
     }
@@ -226,10 +235,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             return;
         }
         exported = true;
+        //校验接口名非空
         if (interfaceName == null || interfaceName.length() == 0) {
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         }
+        //拼接属性配置（环境变量+properties属性）到ProviderConfig对象
         checkDefault();
+        //从ProviderConfig对象中读取 application,module,registeries,monitor,protocols
         if (provider != null) {
             if (application == null) {
                 application = provider.getApplication();
@@ -263,6 +275,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 monitor = application.getMonitor();
             }
         }
+        //泛化接口的实现
         if (ref instanceof GenericService) {
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
@@ -270,12 +283,15 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         } else {
             try {
+                //普通接口的实现
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            //校验接口和方法
             checkInterfaceAndMethods(interfaceClass, methods);
+            //校验指向的service对象
             checkRef();
             generic = Boolean.FALSE.toString();
         }
@@ -293,6 +309,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 throw new IllegalStateException("The local implementation class " + localClass.getName() + " not implement interface " + interfaceName);
             }
         }
+        //处理服务接口客户端本地代理( `stub` )相关
         if (stub != null) {
             if ("true".equals(stub)) {
                 stub = interfaceName + "Stub";
@@ -307,15 +324,23 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 throw new IllegalStateException("The stub implementation class " + stubClass.getName() + " not implement interface " + interfaceName);
             }
         }
+        //校验ApplicationConfig配置
         checkApplication();
+        //校验注册中心配置
         checkRegistry();
+        //校验ProtocoConfig配置数组
         checkProtocol();
+        //读取环境变量和properties配置到ServiceConfig对象
         appendProperties(this);
+
+
+
         checkStub(interfaceClass);
         checkMock(interfaceClass);
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
+        //暴露服务
         doExportUrls();
         ProviderModel providerModel = new ProviderModel(getUniqueServiceName(), this, ref);
         ApplicationModel.initProviderModel(getUniqueServiceName(), providerModel);

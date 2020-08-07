@@ -89,6 +89,14 @@ public abstract class AbstractConfig implements Serializable {
         return value;
     }
 
+    /**
+     * 属性配置的定义：如果公共配置很简单，没有多注册中心，多协议等情况下，或者多个Spring容器想共享配置
+     * 可以使用dubbo.properties作为缺省配置
+     *
+     *
+     * 读取环境变量和 properties 配置到配置对象
+     * @param config
+     */
     protected static void appendProperties(AbstractConfig config) {
         if (config == null) {
             return;
@@ -174,15 +182,16 @@ public abstract class AbstractConfig implements Serializable {
 
     /**
      * 将配置对象的属性，添加到参数集合
-     * @param parameters
-     * @param config
-     * @param prefix
+     * @param parameters 参数集合，实际上，该集合用于URL.parameters
+     * @param config 配置对象
+     * @param prefix 属性前缀，用于配置项添加到 paramters中的前缀
      */
     @SuppressWarnings("unchecked")
     protected static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
         if (config == null) {
             return;
         }
+        //获取所有方法
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
             try {
@@ -191,11 +200,14 @@ public abstract class AbstractConfig implements Serializable {
                         && !"getClass".equals(name)
                         && Modifier.isPublic(method.getModifiers())
                         && method.getParameterTypes().length == 0
-                        && isPrimitive(method.getReturnType())) {
+                        && isPrimitive(method.getReturnType())) {//方法为获取基本类型，public 的 getting 方法
+                    //方法上添加了Parameter zh注解
                     Parameter parameter = method.getAnnotation(Parameter.class);
+                    //跳过返回值类型为Object排除parameter.excluded=true的配置项
                     if (method.getReturnType() == Object.class || parameter != null && parameter.excluded()) {
                         continue;
                     }
+                    //获取属性名（配置项名）
                     int i = name.startsWith("get") ? 3 : 2;
                     String prop = StringUtils.camelToSplitName(name.substring(i, i + 1).toLowerCase() + name.substring(i + 1), ".");
                     String key;
@@ -204,18 +216,21 @@ public abstract class AbstractConfig implements Serializable {
                     } else {
                         key = prop;
                     }
+                    //获取属性值（配置项值）
                     Object value = method.invoke(config);
                     String str = String.valueOf(value).trim();
                     if (value != null && str.length() > 0) {
+                        //转义
                         if (parameter != null && parameter.escaped()) {
                             str = URL.encode(str);
                         }
+                        //拼接
                         if (parameter != null && parameter.append()) {
                             String pre = parameters.get(Constants.DEFAULT_KEY + "." + key);
                             if (pre != null && pre.length() > 0) {
                                 str = pre + "," + str;
                             }
-                            pre = parameters.get(key);
+                            pre = parameters.get(key);//通过 parameters 属性配置，例如 AbstractMethodConfig.paramters
                             if (pre != null && pre.length() > 0) {
                                 str = pre + "," + str;
                             }
@@ -223,14 +238,17 @@ public abstract class AbstractConfig implements Serializable {
                         if (prefix != null && prefix.length() > 0) {
                             key = prefix + "." + key;
                         }
+                        //添加配置项到parameters
                         parameters.put(key, str);
-                    } else if (parameter != null && parameter.required()) {
+                    } else if (parameter != null && parameter.required()) {//校验配置项非空
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");
                     }
+                    //当方法为 #getParamters()时，动态设置配置项，拓展出非 Dubbo 内置好的逻辑
                 } else if ("getParameters".equals(name)
                         && Modifier.isPublic(method.getModifiers())
                         && method.getParameterTypes().length == 0
                         && method.getReturnType() == Map.class) {
+                    //通过反射返回值Map
                     Map<String, String> map = (Map<String, String>) method.invoke(config, new Object[0]);
                     if (map != null && map.size() > 0) {
                         String pre = (prefix != null && prefix.length() > 0 ? prefix + "." : "");
@@ -249,6 +267,12 @@ public abstract class AbstractConfig implements Serializable {
         appendAttributes(parameters, config, null);
     }
 
+    /**
+     * 将@Paramter(attribute=true)配置对象的属性，添加到参数集合
+     * @param parameters
+     * @param config
+     * @param prefix
+     */
     protected static void appendAttributes(Map<Object, Object> parameters, Object config, String prefix) {
         if (config == null) {
             return;
@@ -414,6 +438,11 @@ public abstract class AbstractConfig implements Serializable {
         this.id = id;
     }
 
+    /**
+     * 读取注解配置到配置对象
+     * @param annotationClass
+     * @param annotation
+     */
     protected void appendAnnotation(Class<?> annotationClass, Object annotation) {
         Method[] methods = annotationClass.getMethods();
         for (Method method : methods) {
