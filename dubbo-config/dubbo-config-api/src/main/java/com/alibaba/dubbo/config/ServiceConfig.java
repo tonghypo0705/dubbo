@@ -259,6 +259,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 protocols = provider.getProtocols();
             }
         }
+        //从ModuleConfig对象中，读取register、monitor对象
         if (module != null) {
             if (registries == null) {
                 registries = module.getRegistries();
@@ -269,6 +270,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
         if (application != null) {
             if (registries == null) {
+                //从ApplicationConfig对象中，读取register、monitor对象
                 registries = application.getRegistries();
             }
             if (monitor == null) {
@@ -284,6 +286,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         } else {
             try {
                 //普通接口的实现
+                //根据interfaceName获取对应的接口类，并复制给interfaceClass对象
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
@@ -293,6 +296,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             checkInterfaceAndMethods(interfaceClass, methods);
             //校验指向的service对象
             checkRef();
+            //标记非泛化的实现
             generic = Boolean.FALSE.toString();
         }
         if (local != null) {
@@ -386,24 +390,36 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
     }
 
+    /**
+     *
+     * 根据协议名称发布暴露URL
+     * @param protocolConfig:协议配置对象
+     * @param registryURLs：注册中心 链接对象数组
+     */
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        //获取协议名称
         String name = protocolConfig.getName();
-        if (name == null || name.length() == 0) {
+        if (name == null || name.length() == 0) {//协议名为空时，缺省为空
             name = "dubbo";
         }
+        //参数集合，用于下面创建Dubbo URL的 parameters属性
 
         Map<String, String> map = new HashMap<String, String>();
+        //将side、dubbo、timestamp、参数添加倒排集合中
         map.put(Constants.SIDE_KEY, Constants.PROVIDER_SIDE);
         map.put(Constants.DUBBO_VERSION_KEY, Version.getProtocolVersion());
         map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
         if (ConfigUtils.getPid() > 0) {
             map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
         }
+        //将各种配置对象加到map中
         appendParameters(map, application);
         appendParameters(map, module);
         appendParameters(map, provider, Constants.DEFAULT_KEY);
         appendParameters(map, protocolConfig);
         appendParameters(map, this);
+
+        //调用MethodConfig对象数组，添加到Map集合中
         if (methods != null && !methods.isEmpty()) {
             for (MethodConfig method : methods) {
                 appendParameters(map, method, method.getName());
@@ -460,6 +476,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             } // end of methods for
         }
 
+        //generic methid 到map中
         if (ProtocolUtils.isGeneric(generic)) {
             map.put(Constants.GENERIC_KEY, generic);
             map.put(Constants.METHODS_KEY, Constants.ANY_VALUE);
@@ -477,6 +494,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 map.put(Constants.METHODS_KEY, StringUtils.join(new HashSet<String>(Arrays.asList(methods)), ","));
             }
         }
+        //token添加到map中
         if (!ConfigUtils.isEmpty(token)) {
             if (ConfigUtils.isDefault(token)) {
                 map.put(Constants.TOKEN_KEY, UUID.randomUUID().toString());
@@ -484,16 +502,17 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 map.put(Constants.TOKEN_KEY, token);
             }
         }
+        //当协议为injvm ,添加notify=false到Map中，表示不注册，不通知
         if (Constants.LOCAL_PROTOCOL.equals(protocolConfig.getName())) {
             protocolConfig.setRegister(false);
             map.put("notify", "false");
         }
-        // export service
+        // 获得contextPath,基础路径，
         String contextPath = protocolConfig.getContextpath();
         if ((contextPath == null || contextPath.length() == 0) && provider != null) {
             contextPath = provider.getContextpath();
         }
-
+        //获得注册到注册中心的服务提供者Host
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
@@ -506,6 +525,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
         String scope = url.getParameter(Constants.SCOPE_KEY);
         // don't export when none is configured
+        //配置规则
         if (!Constants.SCOPE_NONE.toString().equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)

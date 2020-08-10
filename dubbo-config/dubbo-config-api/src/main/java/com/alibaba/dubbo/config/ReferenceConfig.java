@@ -57,7 +57,7 @@ import static com.alibaba.dubbo.common.utils.NetUtils.isInvalidLocalHost;
 
 /**
  * ReferenceConfig
- *
+ * 服务消费者引用服务配置类
  * @export
  */
 public class ReferenceConfig<T> extends AbstractReferenceConfig {
@@ -156,10 +156,20 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         return urls;
     }
 
+    /**
+     * 获取引用服务
+     * 1. 进一步初始化 ReferenceCconfig
+     * 2. 校验ReferenceConfig对象的配置项
+     * 3. 使用ReferenceConfig对象，生成Dubbol Url对象数组
+     * 4. 使用Dubbo URL对象，应用服务
+     * @return
+     */
     public synchronized T get() {
+        //已经销毁，不可获得
         if (destroyed) {
             throw new IllegalStateException("Already destroyed!");
         }
+        //初始化
         if (ref == null) {
             init();
         }
@@ -184,33 +194,43 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     private void init() {
+        //已经初始化，直接返回
         if (initialized) {
             return;
         }
         initialized = true;
+        //校验接口名非空
         if (interfaceName == null || interfaceName.length() == 0) {
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         }
         // get consumer's global configuration
+        //拼接属性配置（环境变量+properties属性）到ConsumerConfig对象
         checkDefault();
+        //拼接属性配置（环境变量+properties属性）到ReferenceConfig对象
         appendProperties(this);
         if (getGeneric() == null && getConsumer() != null) {
             setGeneric(getConsumer().getGeneric());
         }
+        //泛化接口的实现
         if (ProtocolUtils.isGeneric(getGeneric())) {
             interfaceClass = GenericService.class;
         } else {
+            //普通接口的实现
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            //校验接口和方法
             checkInterfaceAndMethods(interfaceClass, methods);
         }
+        //直连提供者，第一优先级，通过-D参数指定
         String resolve = System.getProperty(interfaceName);
         String resolveFile = null;
+        //直连提供者第二优先级，通过文件映射
         if (resolve == null || resolve.length() == 0) {
+            //默认先加载
             resolveFile = System.getProperty("dubbo.resolve.file");
             if (resolveFile == null || resolveFile.length() == 0) {
                 File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
@@ -218,6 +238,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                     resolveFile = userResolveFile.getAbsolutePath();
                 }
             }
+            //存在resolveFile，则进行文件读取加载
             if (resolveFile != null && resolveFile.length() > 0) {
                 Properties properties = new Properties();
                 FileInputStream fis = null;
@@ -246,6 +267,10 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
         }
+        /**
+         * 从ConsumerConfig、ModuleConfig、ApplicationConfig配置对象，复制application module registers monitor给ReferenceConfig
+         */
+        //从ConsumerConfig 对象中，读取application\moudle、registeries、monitor配置对象
         if (consumer != null) {
             if (application == null) {
                 application = consumer.getApplication();
@@ -260,6 +285,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = consumer.getMonitor();
             }
         }
+        //
         if (module != null) {
             if (registries == null) {
                 registries = module.getRegistries();
@@ -268,6 +294,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = module.getMonitor();
             }
         }
+       // 从 ApplicationConfig 对象中，读取 registries、monitor 配置对象。
         if (application != null) {
             if (registries == null) {
                 registries = application.getRegistries();
@@ -276,9 +303,13 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = application.getMonitor();
             }
         }
+        //检查ApplicationConfig配置
         checkApplication();
+        //校验Stub和Mock相关的配置
         checkStub(interfaceClass);
         checkMock(interfaceClass);
+        //创建参数集合Map,用于下面创建Dubbo URL的paramters属性
+
         Map<String, String> map = new HashMap<String, String>();
         Map<Object, Object> attributes = new HashMap<Object, Object>();
         map.put(Constants.SIDE_KEY, Constants.CONSUMER_SIDE);
@@ -321,7 +352,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 checkAndConvertImplicitConfig(method, map, attributes);
             }
         }
-
+       // 以系统环境变量( DUBBO_IP_TO_REGISTRY ) 作为服务注册地址
         String hostToRegistry = ConfigUtils.getSystemProperty(Constants.DUBBO_IP_TO_REGISTRY);
         if (hostToRegistry == null || hostToRegistry.length() == 0) {
             hostToRegistry = NetUtils.getLocalHost();
