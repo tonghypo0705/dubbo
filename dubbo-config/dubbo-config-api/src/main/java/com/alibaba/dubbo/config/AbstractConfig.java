@@ -60,6 +60,7 @@ public abstract class AbstractConfig implements Serializable {
 
     private static final Pattern PATTERN_KEY = Pattern.compile("[*,\\-._0-9a-zA-Z]+");
     private static final Map<String, String> legacyProperties = new HashMap<String, String>();
+    //配置类名的后缀：例如ServiceConfig后缀 为Config,ServiceBean
     private static final String[] SUFFIXES = new String[]{"Config", "Bean"};
 
     static {
@@ -101,7 +102,9 @@ public abstract class AbstractConfig implements Serializable {
         if (config == null) {
             return;
         }
+        //获得配置项前缀，getTagName:使用配置类的类名，获得对应的属性标签
         String prefix = "dubbo." + getTagName(config.getClass()) + ".";
+        //获得配置类的所有方法，通过反射获得配置项的属性名，再用属性名，去读取启动参数和properties配置到配置对象
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
             try {
@@ -112,6 +115,7 @@ public abstract class AbstractConfig implements Serializable {
                     String property = StringUtils.camelToSplitName(name.substring(3, 4).toLowerCase() + name.substring(4), ".");
 
                     String value = null;
+                    //先从启动——d参数
                     if (config.getId() != null && config.getId().length() > 0) {
                         String pn = prefix + config.getId() + "." + property;
                         value = System.getProperty(pn);
