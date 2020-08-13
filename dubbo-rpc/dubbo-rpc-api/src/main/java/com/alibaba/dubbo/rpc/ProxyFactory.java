@@ -22,6 +22,7 @@ import com.alibaba.dubbo.common.extension.Adaptive;
 import com.alibaba.dubbo.common.extension.SPI;
 
 /**
+ * 代理工厂接口
  * ProxyFactory. (API/SPI, Singleton, ThreadSafe)
  */
 @SPI("javassist")
@@ -29,7 +30,7 @@ public interface ProxyFactory {
 
     /**
      * create proxy.
-     *
+     * 创建Proxy，在引用服务调用
      * @param invoker
      * @return proxy
      */
@@ -38,7 +39,7 @@ public interface ProxyFactory {
 
     /**
      * create proxy.
-     *
+     * 创建Proxy，在引用服务调用
      * @param invoker
      * @return proxy
      */
@@ -47,7 +48,7 @@ public interface ProxyFactory {
 
     /**
      * create invoker.
-     *
+     *创建 Invoker ，在暴露服务时调用。
      * @param <T>
      * @param proxy
      * @param type

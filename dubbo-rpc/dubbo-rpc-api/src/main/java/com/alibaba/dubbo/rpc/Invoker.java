@@ -20,7 +20,8 @@ import com.alibaba.dubbo.common.Node;
 
 /**
  * Invoker. (API/SPI, Prototype, ThreadSafe)
- *
+ * 一个可执行的实体，可以发起invoke调用
+ * 有可能是一个本地实现，也有可能是一个远程实现，也可能是一个集群实现
  * @see com.alibaba.dubbo.rpc.Protocol#refer(Class, com.alibaba.dubbo.common.URL)
  * @see com.alibaba.dubbo.rpc.InvokerListener
  * @see com.alibaba.dubbo.rpc.protocol.AbstractInvoker

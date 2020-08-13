@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 
 /**
  * Load dubbo extensions
- * <ul>
+ * <ul> 扩展加载器
  * <li>auto inject dependency extension </li>
  * <li>auto wrap extension in wrapper </li>
  * <li>default extension is an adaptive instance</li>
@@ -61,40 +61,78 @@ public class ExtensionLoader<T> {
     private static final Logger logger = LoggerFactory.getLogger(ExtensionLoader.class);
 
     private static final String SERVICES_DIRECTORY = "META-INF/services/";
-
+    //用户自定义的扩展实现
     private static final String DUBBO_DIRECTORY = "META-INF/dubbo/";
-
+    //Dubbo内部提供的扩展实现
     private static final String DUBBO_INTERNAL_DIRECTORY = DUBBO_DIRECTORY + "internal/";
 
     private static final Pattern NAME_SEPARATOR = Pattern.compile("\\s*[,]+\\s*");
 
+    /**
+     * 扩展加载器集合，key：扩展接口
+     */
     private static final ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<Class<?>, ExtensionLoader<?>>();
 
+    /**
+     * 扩展加载器实例
+     * key：扩展实现类
+     * value:扩展对象
+     * eg:key:Class<AccessLogFilter>
+     *     value:AccessLogFilter
+     */
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<Class<?>, Object>();
 
     // ==============================
 
+    //扩展接口 eg:Protocol
     private final Class<?> type;
 
+    /**
+     * 对象工厂
+     * 用于调用 injectExtension（）方法，用于向扩展对象注入依赖属性
+     */
     private final ExtensionFactory objectFactory;
 
+    /**
+     * 缓存扩展名与扩展类的映射
+     */
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<Class<?>, String>();
 
+    /**
+     *
+     */
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<Map<String, Class<?>>>();
 
     private final Map<String, Activate> cachedActivates = new ConcurrentHashMap<String, Activate>();
+    /**
+     * 缓存的扩展对象集合
+     * key:扩展名
+     * value:扩展对象
+     * eg:Ptorocol 扩展
+     *
+     * key:dubbo value:DubboProtocol
+     * key:injvm value:InjvmProtocol
+     *
+     */
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<String, Holder<Object>>();
+    //缓存的自适应（Adative）扩展对象
     private final Holder<Object> cachedAdaptiveInstance = new Holder<Object>();
+    //缓存的自适应扩展对象的类
     private volatile Class<?> cachedAdaptiveClass = null;
+    //缓存默认的扩展名
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError;
-
+    //扩展Wrapper实现类集合，待唯一参数为扩展接阔的构造方法的实现类
     private Set<Class<?>> cachedWrapperClasses;
 
+    /**
+     * 扩展名与加载对应扩展类发送的异常
+     */
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<String, IllegalStateException>();
 
     private ExtensionLoader(Class<?> type) {
         this.type = type;
+        //自适应扩展点
         objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
     }
 
@@ -113,7 +151,7 @@ public class ExtensionLoader<T> {
             throw new IllegalArgumentException("Extension type(" + type +
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
         }
-
+        //type=Protocol.class
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
@@ -296,18 +334,20 @@ public class ExtensionLoader<T> {
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        // 缓存实例
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
             holder = cachedInstances.get(name);
         }
+        //对应的一个实例
         Object instance = holder.get();
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
                     instance = createExtension(name);
-                    holder.set(instance);
+                    holder.set(instance);//把实例放到缓存
                 }
             }
         }
@@ -484,6 +524,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        //clazz,MyProtocol对应的Class
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
@@ -552,12 +593,26 @@ public class ExtensionLoader<T> {
         return clazz;
     }
 
+    /**
+     * 获得扩展实现类数组
+     * @return
+     */
     private Map<String, Class<?>> getExtensionClasses() {
+        /**
+         * 从缓存中，获得扩展实现类数组
+         * cachedClasses：缓存的扩展实现类集合，但不包含如下两种类型的扩展实现
+         * 1. 自适应扩展实现类，例如AdaptiveExtensionFactory，扩展Adaptive实现类，会添加到Adaptive属性中
+         * 2. 带唯一参数为扩展接口的构造方法的实现类，或者说扩展Wrapper实现类，eg:ProtocolFilterWrapper,拓展 Wrapper 实现类，会添加到 cachedWrapperClasses 属性中
+         *
+         * 总结来说，cacheClassEss+cacheAdaptiveClass+cachedWrapperClasses才是完整缓存的扩展实现类的配置
+         */
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
+                //从缓存中，获得扩展实现类数组
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    //从配置文件中，加载扩展实现类数组
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -567,7 +622,13 @@ public class ExtensionLoader<T> {
     }
 
     // synchronized in getExtensionClasses
+
+    /**
+     * 加载扩展实现类数组
+     * @return
+     */
     private Map<String, Class<?>> loadExtensionClasses() {
+        //通过@SPI注解,获得默认的扩展实现类名
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
             String value = defaultAnnotation.value();
@@ -582,6 +643,7 @@ public class ExtensionLoader<T> {
         }
 
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
+        // 从配置文件中，加载拓展实现类数组
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
         loadDirectory(extensionClasses, DUBBO_DIRECTORY);
         loadDirectory(extensionClasses, SERVICES_DIRECTORY);
@@ -589,9 +651,11 @@ public class ExtensionLoader<T> {
     }
 
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) {
+        //完成的文件名
         String fileName = dir + type.getName();
         try {
             Enumeration<java.net.URL> urls;
+            //获得文件名对应的所有文件数组
             ClassLoader classLoader = findClassLoader();
             if (classLoader != null) {
                 urls = classLoader.getResources(fileName);
@@ -624,8 +688,8 @@ public class ExtensionLoader<T> {
                             String name = null;
                             int i = line.indexOf('=');
                             if (i > 0) {
-                                name = line.substring(0, i).trim();
-                                line = line.substring(i + 1).trim();
+                                name = line.substring(0, i).trim();//MyProcol
+                                line = line.substring(i + 1).trim();//Value
                             }
                             if (line.length() > 0) {
                                 loadClass(extensionClasses, resourceURL, Class.forName(line, true, classLoader), name);

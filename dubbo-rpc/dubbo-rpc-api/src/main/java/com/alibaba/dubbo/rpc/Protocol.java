@@ -21,6 +21,7 @@ import com.alibaba.dubbo.common.extension.Adaptive;
 import com.alibaba.dubbo.common.extension.SPI;
 
 /**
+ * Invoker暴露和引用的主功能入口
  * Protocol. (API/SPI, Singleton, ThreadSafe)
  */
 @SPI("dubbo")
@@ -34,6 +35,8 @@ public interface Protocol {
     int getDefaultPort();
 
     /**
+     * 暴露远程服务
+     * 1.
      * Export service for remote invocation: <br>
      * 1. Protocol should record request source address after receive a request:
      * RpcContext.getContext().setRemoteAddress();<br>

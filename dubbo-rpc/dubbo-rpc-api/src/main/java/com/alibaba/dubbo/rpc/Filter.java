@@ -19,6 +19,7 @@ package com.alibaba.dubbo.rpc;
 import com.alibaba.dubbo.common.extension.SPI;
 
 /**
+ * 过滤器接口
  * Filter. (SPI, Singleton, ThreadSafe)
  */
 @SPI
