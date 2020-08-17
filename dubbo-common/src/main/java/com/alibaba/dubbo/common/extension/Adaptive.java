@@ -27,6 +27,10 @@ import java.lang.annotation.Target;
 /**
  * Provide helpful information for {@link ExtensionLoader} to inject dependency extension instance.
  *
+ * 自适应扩展信息的标记
+ * 可添加类或者方法上，
+ * 标记再类上：代表手动实现他是一个拓展接阔的Adaptive拓展实现类
+ * 标记再方法上，代码自动生成代码实现该接口的Adaptive拓展实现类
  * @see ExtensionLoader
  * @see URL
  */
@@ -54,6 +58,7 @@ public @interface Adaptive {
      * <code>String[] {"yyy.invoker.wrapper"}</code>. This name will be used to search for parameter from URL.
      *
      * @return parameter key names in URL
+     * value:从DubboUrl参数中，使用键名获取键值，该值为真正的扩展名
      */
     String[] value() default {};
 
