@@ -224,13 +224,15 @@ public class ExtensionLoader<T> {
      * @see #getActivateExtension(com.alibaba.dubbo.common.URL, String[], String)
      */
     public List<T> getActivateExtension(URL url, String key, String group) {
+        //从Dubbo Url中获得参数值
         String value = url.getParameter(key);
+        //获得符合自动激活条件的扩展对象数组
         return getActivateExtension(url, value == null || value.length() == 0 ? null : Constants.COMMA_SPLIT_PATTERN.split(value), group);
     }
 
     /**
      * Get activate extensions.
-     *
+     * 获得符合自动激活条件的拓展对象数组
      * @param url    url
      * @param values extension point names
      * @param group  group
@@ -240,12 +242,15 @@ public class ExtensionLoader<T> {
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> exts = new ArrayList<T>();
         List<String> names = values == null ? new ArrayList<String>(0) : Arrays.asList(values);
+        // 判断不存在配置 `"-name"` 。例如，<dubbo:service filter="-default" /> ，代表移除所有默认过滤器。
         if (!names.contains(Constants.REMOVE_VALUE_PREFIX + Constants.DEFAULT_KEY)) {
+            //获得拓展实现类数组
             getExtensionClasses();
             for (Map.Entry<String, Activate> entry : cachedActivates.entrySet()) {
                 String name = entry.getKey();
                 Activate activate = entry.getValue();
-                if (isMatchGroup(group, activate.group())) {
+                if (isMatchGroup(group, activate.group())) {//匹配分组
+                    //获得扩展对象
                     T ext = getExtension(name);
                     if (!names.contains(name)
                             && !names.contains(Constants.REMOVE_VALUE_PREFIX + name)
@@ -498,6 +503,10 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 获得自适应扩展对象
+     *
+     */
     public T getAdaptiveExtension() {
         //从缓存中获得自适应扩展对象
         Object instance = cachedAdaptiveInstance.get();
@@ -840,6 +849,9 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 创建自适应扩展对象
+     */
     private T createAdaptiveExtension() {
         try {
             //获得自使用扩展类并创建自适应扩展对象
@@ -850,6 +862,10 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 自适应扩展类
+     * @return
+     */
     private Class<?> getAdaptiveExtensionClass() {
         //如果存在，则直接返回
         getExtensionClasses();
@@ -860,6 +876,10 @@ public class ExtensionLoader<T> {
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
+    /**
+     * 自动生成自适应扩展的代码实现，并编译后返回该类
+     * @return
+     */
     private Class<?> createAdaptiveExtensionClass() {
         //自动生成自适应扩展的代码实现的字符串0
         String code = createAdaptiveExtensionClassCode();

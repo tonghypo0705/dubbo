@@ -17,6 +17,7 @@
 package com.alibaba.dubbo.common.extension;
 
 /**
+ * 拓展工厂接口
  * ExtensionFactory
  */
 @SPI
@@ -25,9 +26,9 @@ public interface ExtensionFactory {
     /**
      * Get extension.
      *
-     * @param type object type.
-     * @param name object name.
-     * @return object instance.
+     * @param type object type. 拓展接口
+     * @param name object name.扩展名
+     * @return object instance.扩展实例
      */
     <T> T getExtension(Class<T> type, String name);
 
